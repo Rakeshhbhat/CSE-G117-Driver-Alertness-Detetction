@@ -1,0 +1,145 @@
+#include <LiquidCrystal.h>
+const int rs = 9, en = 8, d4 = 7, d5 = 6, d6 = 5, d7 = 4;
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);
+
+int gas = A3;
+int relay = 10;
+int buzzer = 12;
+
+#include <SoftwareSerial.h>
+const byte rxPin = 2;
+const byte txPin = 3;
+SoftwareSerial mySerial (rxPin, txPin);
+
+#include <Wire.h>
+#include <Adafruit_Sensor.h> 
+#include <Adafruit_ADXL345_U.h>
+Adafruit_ADXL345_Unified accel = Adafruit_ADXL345_Unified();
+
+int dt = 0;
+
+void setup() {
+  Serial.begin(9600);
+  mySerial.begin(9600);
+  lcd.begin(16, 2);
+
+  pinMode(gas, INPUT);
+  pinMode(relay, OUTPUT);
+  pinMode(buzzer, OUTPUT);
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("   DROWSINESS");
+  lcd.setCursor(0, 1);
+  lcd.print("     SYSTEM");
+  Serial.println("DROWSINESS DETECTION");
+  mySerial.begin(9600);
+  mySerial.println("$DROWSINESS DETECTION#");
+  delay(1000);
+
+  lcd.clear();
+  if(!accel.begin())
+  {
+    Serial.println("No ADXL345 sensor detected.");
+    lcd.print("No ADXL345 FOUND");
+    while(1);
+  }
+}
+
+void loop() {
+  int gasVal = analogRead(gas);
+  Serial.print("ALCOHOL LEVEL : ");
+  Serial.println(gasVal);
+  
+  if(gasVal > 200){
+    dt = 1;
+    lcd.clear();
+    lcd.print("ALCOHOL DETECT");
+    Serial.println("ALCOHOL DETECTED");
+    mySerial.begin(9600);
+    mySerial.println("$ALCOHOL DETECTED#");
+    delay(1000);
+  }else{
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("   DROWSINESS");
+    lcd.setCursor(0, 1);
+    lcd.print("     SYSTEM");
+    delay(1000);
+  }
+ 
+  sensors_event_t event; 
+  accel.getEvent(&event);
+  
+  float X=event.acceleration.x;
+  float Y=event.acceleration.y;
+  float Z=event.acceleration.z;
+  
+  Serial.print("X AXIS : ");
+  Serial.println(X);
+  Serial.print("Y AXIS : ");
+  Serial.println(Y);
+  Serial.print("Z AXIS : ");
+  Serial.println(Z);
+  delay(100);
+  
+  if(X<-8||X>8||Y<-8||Y>8)
+  {
+    dt = 1;
+    lcd.clear();
+    lcd.print("ACCIDENT DETECT");
+    Serial.println("ACCIDENT DETECTED");
+    mySerial.begin(9600);
+    mySerial.println("$ACCIDENT DETECTED AT https://g.co/kgs/uguVzXJ#");
+    delay(1000);
+  }else{
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("   DROWSINESS");
+    lcd.setCursor(0, 1);
+    lcd.print("     SYSTEM"); 
+    delay(1000);
+  }
+  
+  if(Serial.available()>0)
+  {
+    Serial.begin(9600);
+    char a = Serial.read();
+    if(a == 'D'){
+      dt = 1;
+      lcd.clear();
+      lcd.print("DROWSINESS DETECT");
+      Serial.println("DROWSINESS DETECTED");
+      mySerial.begin(9600);
+      mySerial.println("$DROWSINESS DETECTED#");
+      delay(1000);
+    }else if(a == 'Y'){
+      dt = 1;
+      lcd.clear();
+      lcd.print("YAWNING DETECT");
+      Serial.println("YAWNING DETECTED");
+      mySerial.begin(9600);
+      mySerial.println("$YAWNING DETECTED#"); 
+      delay(1000);
+    }else{
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("   DROWSINESS");
+      lcd.setCursor(0, 1);
+      lcd.print("     SYSTEM");
+      delay(1000);
+    }
+  }
+   if(dt == 1){
+    dt = 0;
+    digitalWrite(relay, LOW); 
+    digitalWrite(buzzer, HIGH); 
+    delay(1000);
+   }else{
+    digitalWrite(relay, HIGH); 
+    digitalWrite(buzzer, LOW); 
+    delay(1000);
+   }
+}
+
+               
